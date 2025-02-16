@@ -19,23 +19,19 @@ class QodanaCopyFloatingToolbar(editor: EditorImpl) : JPanel() {
     border = BorderFactory.createEmptyBorder()
     isOpaque = false
 
-    val component = object : AbstractFloatingToolbarComponent(CopyActionGroup(), editor.disposable) {
-
-      override val autoHideable: Boolean = false
-
-      override fun isComponentOnHold(): Boolean = true
-
-      override fun installMouseMotionWatcher() = Unit
-
-      init {
-        init(editor.contentComponent)
-      }
-    }
-
+    val component = QodanaCopyFloatingToolbarComponent(editor)
     component.scheduleShow()
     addComponent(component, editor.disposable)
   }
 }
+
+private class QodanaCopyFloatingToolbarComponent(
+  editor: EditorImpl,
+) : AbstractFloatingToolbarComponent(
+  CopyActionGroup(),
+  editor.contentComponent,
+  editor.disposable
+)
 
 class CopyActionGroup : DefaultActionGroup() {
   val action = CopyAction()

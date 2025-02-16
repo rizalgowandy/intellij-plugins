@@ -24,11 +24,15 @@ import com.intellij.plugins.serialmonitor.service.SerialPortService.SerialConnec
 import com.intellij.plugins.serialmonitor.service.SerialPortsListener
 import com.intellij.plugins.serialmonitor.ui.actions.EditSettingsAction
 import com.intellij.plugins.serialmonitor.ui.console.JeditermSerialMonitorDuplexConsoleView
+import com.intellij.ui.ColorUtil
 import com.intellij.ui.JBColor
 import com.intellij.ui.TextFieldWithStoredHistory
 import com.intellij.ui.components.JBCheckBox
 import com.intellij.ui.components.JBLoadingPanel
-import com.intellij.ui.dsl.builder.*
+import com.intellij.ui.dsl.builder.Cell
+import com.intellij.ui.dsl.builder.RightGap
+import com.intellij.ui.dsl.builder.panel
+import com.intellij.ui.dsl.builder.whenStateChangedFromUi
 import com.intellij.uiDesigner.core.GridConstraints
 import com.intellij.uiDesigner.core.GridConstraints.*
 import com.intellij.uiDesigner.core.GridLayoutManager
@@ -147,8 +151,12 @@ class SerialMonitor(private val project: Project,
     val connection = duplexConsoleView.connection
     myHardwareControls = panel {
       row {
-        val rtsCheckbox = checkBox("RTS")
-        val dtrCheckbox = checkBox("DTR")
+        val rtsCheckbox = checkBox(SerialMonitorBundle.message("hardware.flow.control.rts")).applyToComponent {
+          toolTipText = SerialMonitorBundle.message("hardware.flow.control.rts.tooltip")
+        }
+        val dtrCheckbox = checkBox(SerialMonitorBundle.message("hardware.flow.control.dtr")).applyToComponent {
+          toolTipText = SerialMonitorBundle.message("hardware.flow.control.dtr.tooltip")
+        }
 
         fun Cell<JBCheckBox>.changesBind(prop: KMutableProperty1<SerialConnection, Boolean>, connection: SerialConnection) {
           this.whenStateChangedFromUi(this@SerialMonitor) {
@@ -169,13 +177,31 @@ class SerialMonitor(private val project: Project,
         dtrCheckbox.component.isSelected = connection.dtr
         dtrCheckbox.changesBind(SerialConnection::dtr, connection)
 
-        val statusIcon = IconUtil.colorize(AllIcons.Debugger.Db_set_breakpoint, JBColor.green, true)
-        myHardwareStatusComponents.cts = icon(statusIcon).gap(RightGap.SMALL)
+        // Green7 works for default themes, fallback to pure green otherwise, which works for HighContrast
+        @Suppress("UnregisteredNamedColor")
+        val statusColor = JBColor.namedColor("ColorPalette.Green7", ColorUtil.fromHex("#00FF00"))
+        // Use the ThreadAtBreakpoint icon to get a circle
+        val statusIcon = IconUtil.colorize(AllIcons.Debugger.ThreadAtBreakpoint, statusColor, true)
+
+        myHardwareStatusComponents.cts = icon(statusIcon)
+          .gap(RightGap.SMALL)
+          .applyToComponent {
+            toolTipText = SerialMonitorBundle.message("hardware.flow.control.cts.tooltip")
+          }
           .component
-        label("CTS")
-        myHardwareStatusComponents.dsr = icon(statusIcon).gap(RightGap.SMALL)
+        label(SerialMonitorBundle.message("hardware.flow.control.cts")).applyToComponent {
+            toolTipText = SerialMonitorBundle.message("hardware.flow.control.cts.tooltip")
+        }
+
+        myHardwareStatusComponents.dsr = icon(statusIcon)
+          .gap(RightGap.SMALL)
+          .applyToComponent {
+            toolTipText = SerialMonitorBundle.message("hardware.flow.control.dsr.tooltip")
+          }
           .component
-        label("DSR")
+        label(SerialMonitorBundle.message("hardware.flow.control.dsr")).applyToComponent {
+          toolTipText = SerialMonitorBundle.message("hardware.flow.control.dsr.tooltip")
+        }
       }
     }
 

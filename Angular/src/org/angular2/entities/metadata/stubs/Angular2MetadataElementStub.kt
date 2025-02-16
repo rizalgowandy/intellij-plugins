@@ -1,13 +1,13 @@
 // Copyright 2000-2022 JetBrains s.r.o. and contributors. Use of this source code is governed by the Apache 2.0 license.
 package org.angular2.entities.metadata.stubs
 
+import com.intellij.lang.javascript.index.flags.FlagsStructure
 import com.intellij.openapi.util.NotNullLazyValue
 import com.intellij.psi.PsiElement
 import com.intellij.psi.stubs.StubElement
 import com.intellij.psi.stubs.StubInputStream
 import org.angular2.lang.metadata.psi.MetadataElementType
 import org.angular2.lang.metadata.stubs.MetadataElementStub
-import org.angular2.lang.metadata.stubs.MetadataElementStub.ConstructorFromJsonValue
 import java.io.IOException
 
 abstract class Angular2MetadataElementStub<Psi : PsiElement> : MetadataElementStub<Psi> {
@@ -24,7 +24,7 @@ abstract class Angular2MetadataElementStub<Psi : PsiElement> : MetadataElementSt
 
   companion object {
     @JvmStatic
-    protected val FLAGS_STRUCTURE = MetadataElementStub.FLAGS_STRUCTURE
+    protected val FLAGS_STRUCTURE: FlagsStructure = MetadataElementStub.FLAGS_STRUCTURE
 
     private val TYPE_FACTORY = NotNullLazyValue.lazy {
       mapOf(

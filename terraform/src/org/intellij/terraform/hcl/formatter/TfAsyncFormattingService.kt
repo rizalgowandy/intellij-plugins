@@ -9,20 +9,21 @@ import com.intellij.formatting.service.AsyncFormattingRequest
 import com.intellij.formatting.service.FormattingService
 import com.intellij.openapi.diagnostic.logger
 import com.intellij.openapi.project.Project
+import com.intellij.platform.ide.progress.runWithModalProgressBlocking
 import com.intellij.psi.PsiFile
 import org.intellij.terraform.config.Constants.TF_FMT
-import org.intellij.terraform.config.TerraformConstants.EXECUTION_NOTIFICATION_GROUP
 import org.intellij.terraform.config.TerraformFileType
-import org.intellij.terraform.config.actions.isExecutableToolFileConfigured
-import org.intellij.terraform.config.util.TFExecutor
+import org.intellij.terraform.config.TfConstants
+import org.intellij.terraform.config.util.TfExecutor
 import org.intellij.terraform.config.util.getApplicableToolType
 import org.intellij.terraform.hcl.HCLBundle
 import org.intellij.terraform.install.TfToolType
+import org.intellij.terraform.runtime.ToolPathDetector
 
 internal class TfAsyncFormattingService : AsyncDocumentFormattingService() {
   override fun getName(): String = TF_FMT
 
-  override fun getNotificationGroupId(): String = EXECUTION_NOTIFICATION_GROUP.displayId
+  override fun getNotificationGroupId(): String = TfConstants.getNotificationGroup().displayId
 
   override fun getFeatures(): Set<FormattingService.Feature> = emptySet()
 
@@ -36,9 +37,6 @@ internal class TfAsyncFormattingService : AsyncDocumentFormattingService() {
     val project = context.project
     val virtualFile = context.virtualFile ?: return null
     val toolType = getApplicableToolType(virtualFile)
-    if (!isExecutableToolFileConfigured(project, toolType)) {
-      return null
-    }
 
     val commandLine = createCommandLine(project, toolType)
 
@@ -47,6 +45,13 @@ internal class TfAsyncFormattingService : AsyncDocumentFormattingService() {
 
       override fun run() {
         try {
+
+          runWithModalProgressBlocking(project, HCLBundle.message("progress.title.detecting.terraform.executable", toolType.displayName)) {
+            if (!ToolPathDetector.getInstance(project).detectAndVerifyTool(toolType, false)) {
+              throw IllegalStateException("Incorrect ${toolType.displayName} path: ${toolType.getToolSettings(project).toolPath}")
+            }
+          }
+
           processHandler = CapturingProcessHandler(commandLine)
 
           val handler = processHandler ?: return
@@ -78,7 +83,7 @@ internal class TfAsyncFormattingService : AsyncDocumentFormattingService() {
   }
 
   private fun createCommandLine(project: Project, applicableToolType: TfToolType): GeneralCommandLine =
-    TFExecutor.`in`(project, applicableToolType)
+    TfExecutor.`in`(project, applicableToolType)
       .withPresentableName(HCLBundle.message("tool.format.display", applicableToolType.displayName))
       .withParameters("fmt", "-")
       .createCommandLine()

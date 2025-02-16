@@ -34,7 +34,7 @@ import org.intellij.terraform.config.Constants.HCL_VALIDATION_IDENTIFIER
 import org.intellij.terraform.config.Constants.HCL_VARIABLE_IDENTIFIER
 import org.intellij.terraform.config.Constants.HCL_WORKSPACES_BLOCK_IDENTIFIER
 import org.intellij.terraform.config.model.local.LocalProviderNamesService
-import org.intellij.terraform.config.patterns.TerraformPatterns
+import org.intellij.terraform.config.patterns.TfPsiPatterns
 import org.intellij.terraform.hcl.psi.HCLBlock
 import org.intellij.terraform.isTerraformCompatiblePsiFile
 import org.intellij.terraform.opentofu.model.EncryptionBlockType
@@ -60,12 +60,14 @@ class TypeModel(
   providers: List<ProviderType> = emptyList(),
   provisioners: List<ProvisionerType> = emptyList(),
   backends: List<BackendType> = emptyList(),
-  functions: List<Function> = emptyList(),
+  functions: List<TfFunction> = emptyList(),
+  providerDefinedFunctions: List<TfFunction> = emptyList()
 ) {
 
   val provisioners: List<ProvisionerType> = provisioners.sortedBy { it.type }
   val backends: List<BackendType> = backends.sortedBy { it.type }
-  val functions: List<Function> = functions.sortedBy { it.name }
+  val functions: List<TfFunction> = functions.sortedBy { it.name }
+  val providerDefinedFunctions: List<TfFunction> = providerDefinedFunctions.sortedBy { it.name }
 
   val providersByFullName: Map<String, ProviderType>
   val resourcesByProvider: Map<String, List<ResourceType>>
@@ -298,7 +300,7 @@ class TypeModel(
 
     @RequiresReadLock
     fun getTerraformBlock(psiFile: PsiFile?): HCLBlock? {
-      val terraformRootBlock = psiFile?.childrenOfType<HCLBlock>()?.firstOrNull { TerraformPatterns.TerraformRootBlock.accepts(it) }
+      val terraformRootBlock = psiFile?.childrenOfType<HCLBlock>()?.firstOrNull { TfPsiPatterns.TerraformRootBlock.accepts(it) }
       return terraformRootBlock
     }
   }
@@ -359,7 +361,7 @@ class TypeModel(
     return backends.findBinary(name) { it.type }
   }
 
-  fun getFunction(name: String): Function? {
+  fun getFunction(name: String): TfFunction? {
     return functions.findBinary(name) { it.name }
   }
 

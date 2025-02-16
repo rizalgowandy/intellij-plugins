@@ -2,23 +2,16 @@ package org.intellij.terraform.runtime
 
 import com.intellij.execution.RunManager
 import com.intellij.execution.RunnerAndConfigurationSettings
-import com.intellij.execution.lineMarker.RunLineMarkerContributor.Info
 import com.intellij.icons.AllIcons
-import com.intellij.testFramework.fixtures.BasePlatformTestCase
+import com.intellij.openapi.actionSystem.AnAction
+import com.intellij.openapi.vfs.toNioPathOrNull
 import com.intellij.ui.IconManager
-import org.intellij.terraform.TerraformTestUtils
-import org.intellij.terraform.install.TfToolType
 
-class TfRunLineMarkerContributorTest : BasePlatformTestCase() {
-  override fun getTestDataPath(): String = TerraformTestUtils.getTestDataPath() + "/runtime"
-
-  override fun setUp() {
-    super.setUp()
-    TerraformProjectSettings.getInstance(myFixture.project).toolPath = TfToolType.TERRAFORM.getBinaryName()
-  }
+internal class TfRunLineMarkerContributorTest : BaseRunConfigurationTest() {
 
   fun testSimpleLineMarker() {
-    val file = myFixture.configureByFile("simple.tf")
+    myFixture.configureFromExistingVirtualFile(myFixture.copyFileToProject("simple.tf", "src/simple.tf"))
+    val file = myFixture.file
     val info = file.findElementAt(myFixture.caretOffset)?.let { TfRunLineMarkerContributor().getInfo(it) }
     if (info == null) {
       fail("Info of RunLineMarker not should be empty")
@@ -27,11 +20,12 @@ class TfRunLineMarkerContributorTest : BasePlatformTestCase() {
 
     val warnedRun = IconManager.getInstance().createLayered(AllIcons.RunConfigurations.TestState.Run, AllIcons.Nodes.WarningMark)
     assertEquals(warnedRun, info.icon)
-    checkActionNames(info)
+    runActionsAndCheckNames(info.actions)
   }
 
   fun testLineMarkerWithComment() {
-    val file = myFixture.configureByFile("with_comment.tf")
+    myFixture.configureFromExistingVirtualFile(myFixture.copyFileToProject("with_comment.tf", "src/with_comment.tf"))
+    val file = myFixture.file
     val info = file.findElementAt(myFixture.caretOffset)?.let { TfRunLineMarkerContributor().getInfo(it) }
     if (info == null) {
       fail("Info of RunLineMarker not should be empty")
@@ -40,8 +34,8 @@ class TfRunLineMarkerContributorTest : BasePlatformTestCase() {
 
     val warnedRun = IconManager.getInstance().createLayered(AllIcons.RunConfigurations.TestState.Run, AllIcons.Nodes.WarningMark)
     assertEquals(warnedRun, info.icon)
-    testRunConfigActions(info)
-    checkActionNames(info)
+    testRunConfigActions(info.actions)
+    runActionsAndCheckNames(info.actions)
 
     val gutter = myFixture.findGutter("with_comment.tf")
     assertNotNull(gutter)
@@ -56,8 +50,31 @@ class TfRunLineMarkerContributorTest : BasePlatformTestCase() {
     assertEmpty(gutters)
   }
 
-  private fun checkActionNames(info: Info) {
+  fun testNotDuplicatedRunConfig() {
+    myFixture.configureFromExistingVirtualFile(myFixture.copyFileToProject("with_duplicated.tf", "src/with_duplicated.tf"))
+    val file = myFixture.file
+    val info = file.findElementAt(myFixture.caretOffset)?.let { TfRunLineMarkerContributor().getInfo(it) }
+    if (info == null) {
+      fail("Info of RunLineMarker not should be empty")
+      return
+    }
+
     val actions = info.actions
+    val runnedAction = myFixture.testAction(actions.first())
+    assertEquals("Init src", runnedAction.text)
+
+    myFixture.type(" ")
+    val updatedGutter = file.findElementAt(myFixture.caretOffset)?.let { TfRunLineMarkerContributor().getInfo(it) }
+    if (updatedGutter == null) {
+      fail("Info of RunLineMarker not should be empty")
+      return
+    }
+    assertEquals(actions.size, updatedGutter.actions.size)
+    val runManager = RunManager.getInstance(project)
+    runManager.allSettings.forEach { runManager.removeConfiguration(it) }
+  }
+
+  private fun runActionsAndCheckNames(actions: Array<AnAction>?) {
     assertEquals(actions?.last()?.templateText, "Edit Configurations…")
 
     val templateActions = actions?.take(5)
@@ -69,8 +86,8 @@ class TfRunLineMarkerContributorTest : BasePlatformTestCase() {
     }
   }
 
-  private fun testRunConfigActions(info: Info) {
-    val actions = info.actions
+  private fun testRunConfigActions(actions: Array<AnAction>?) {
+    actions ?: return
     val runManager = RunManager.getInstance(project)
     assertEmpty(runManager.allSettings)
 
@@ -89,11 +106,11 @@ class TfRunLineMarkerContributorTest : BasePlatformTestCase() {
 
   private fun testTfConfiguration(settings: RunnerAndConfigurationSettings, mainCommand: TfCommand) {
     val configuration = settings.configuration
-    assertInstanceOf(configuration, TerraformRunConfiguration::class.java)
-    configuration as TerraformRunConfiguration
+    assertInstanceOf(configuration, TfRunConfiguration::class.java)
+    configuration as TfRunConfiguration
 
     assertEquals(mainCommand.command, configuration.programParameters)
-    assertEquals("/src", configuration.workingDirectory)
+    assertEquals("${myFixture.file.virtualFile.parent.toNioPathOrNull()}", configuration.workingDirectory)
     assertTrue(configuration.envs.isEmpty())
   }
 }

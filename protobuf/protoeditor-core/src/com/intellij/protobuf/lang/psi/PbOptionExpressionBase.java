@@ -16,12 +16,13 @@
 package com.intellij.protobuf.lang.psi;
 
 import com.intellij.psi.util.PsiTreeUtil;
+import org.jetbrains.annotations.ApiStatus;
 import org.jetbrains.annotations.Nullable;
 
-interface PbOptionExpressionBase extends PbElement {
+@ApiStatus.Internal
+public interface PbOptionExpressionBase extends PbElement {
   /** Returns the {@link ProtoBooleanValue} value, or <code>null</code> if one does not exist. */
-  @Nullable
-  default ProtoBooleanValue getBooleanValue() {
+  default @Nullable ProtoBooleanValue getBooleanValue() {
     return PsiTreeUtil.getChildOfType(this, ProtoBooleanValue.class);
   }
 }

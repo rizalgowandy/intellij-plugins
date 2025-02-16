@@ -118,14 +118,13 @@ public class CreateStepDefinitionFileDialog extends DialogWrapper {
     return myContentPanel;
   }
 
-  @Nullable
   @Override
-  protected String getDimensionServiceKey() {
+  protected @Nullable String getDimensionServiceKey() {
     return CreateStepDefinitionFileDialog.class.getName();
   }
 
   private static boolean isValidPath(@NotNull String path) {
-    while (path.length() > 0) {
+    while (!path.isEmpty()) {
       if (!PathUtil.isValidFileName(PathUtil.getFileName(path))) {
         return false;
       }

@@ -1,6 +1,5 @@
 ### auto-generated section `build intellij.flex` start
-load("@rules_jvm//:jvm.bzl", "jvm_resources")
-load("@rules_jvm//:rules.bzl", "jvm_library")
+load("@rules_jvm//:jvm.bzl", "jvm_library", "jvm_resources")
 
 jvm_resources(
   name = "flex_resources",
@@ -12,15 +11,25 @@ jvm_library(
   name = "flex",
   module_name = "intellij.flex",
   visibility = ["//visibility:public"],
-  srcs = glob(["src/**/*.kt", "src/**/*.java"], allow_empty = True, exclude = ["**/module-info.java"]),
-  javac_opts = "@rules_jvm//:j17",
-  kotlinc_opts = "@rules_jvm//:k17",
+  srcs = glob(["src/**/*.kt", "src/**/*.java"], allow_empty = True),
   deps = [
     "//contrib/flex/flex-shared:shared",
+    "@community//platform/ide-core-impl",
     "@community//java/compiler/openapi:java-compiler",
     "@community//platform/lang-api:lang",
+    "//CSS/frontback/css-api:css-frontback",
+    "@community//xml/xml-structure-view-api:structureView",
+    "@community//platform/usageView",
+    "//plugins/JavaScriptLanguage/javascript-parser",
     "//plugins/JavaScriptLanguage:javascript-impl",
+    "@community//xml/xml-parser:parser",
+    "//plugins/JavaScriptLanguage:javascript",
+    "@community//platform/indexing-impl",
+    "//plugins/JavaScriptLanguage/javascript-frontback-impl",
     "//plugins/JavaScriptDebugger:javascript-debugger",
+    "//plugins/JavaScriptDebugger/backend:javascript-debugger-backend",
+    "@community//platform/util/progress",
+    "//duplicatedetector:duplicatesDetector",
     "@community//platform/platform-impl:ide-impl",
     "@community//platform/xdebugger-api:debugger",
     "@community//java/execution/openapi:java-execution",
@@ -29,10 +38,11 @@ jvm_library(
     "@community//java/openapi:java",
     "@community//xml/impl",
     "//CSS/impl:css-impl",
+    "//CSS/css-psi-impl:css-psi",
     "@community//platform/testRunner",
     "@community//java/execution/impl:java-execution-impl",
     "@community//platform/smRunner",
-    "//CSS/css-api:css",
+    "//CSS:css",
     "@community//java/idea-ui:ui",
     "@community//plugins/maven",
     "@community//plugins/ant",
@@ -57,10 +67,6 @@ jvm_library(
     "@community//platform/util/jdom",
     "//plugins/JavaScriptDebugger/sdk/debugger-ui:javascript-debugger-ui",
     "@community//platform/util/text-matching",
-  ],
-  exports = [
-    "//contrib/flex/flex-shared:shared",
-    "//CSS/css-api:css",
   ],
   runtime_deps = [
     ":flex_resources",

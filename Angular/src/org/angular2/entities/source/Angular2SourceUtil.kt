@@ -8,6 +8,7 @@ import com.intellij.lang.injection.InjectedLanguageManager
 import com.intellij.lang.javascript.DialectDetector
 import com.intellij.lang.javascript.JSStringUtil
 import com.intellij.lang.javascript.ecmascript6.TypeScriptUtil
+import com.intellij.lang.javascript.evaluation.JSTypeEvaluationLocationProvider
 import com.intellij.lang.javascript.psi.*
 import com.intellij.lang.javascript.psi.ecma6.ES6Decorator
 import com.intellij.lang.javascript.psi.ecma6.TypeScriptClass
@@ -34,10 +35,10 @@ import com.intellij.util.AstLoadingFilter
 import com.intellij.util.SmartList
 import com.intellij.util.asSafely
 import org.angular2.Angular2DecoratorUtil
+import org.angular2.Angular2DecoratorUtil.isHostBindingExpression
 import org.angular2.Angular2InjectionUtils
 import org.angular2.codeInsight.refs.Angular2TemplateReferencesProvider
 import org.angular2.entities.*
-import org.angular2.index.TS_CLASS_TOKENS
 import org.angular2.index.resolveComponentsFromIndex
 import org.angular2.lang.expr.Angular2Language
 import org.angular2.lang.html.Angular2HtmlLanguage
@@ -47,8 +48,7 @@ import org.angular2.lang.html.stub.Angular2HtmlStubElementTypes
 import java.util.*
 import java.util.function.BiPredicate
 
-object Angular2SourceUtil {
-
+internal object Angular2SourceUtil {
   @JvmStatic
   fun getNgContentSelectors(template: PsiFile?): List<Angular2DirectiveSelector> =
     if (template is PsiFileImpl) {
@@ -199,13 +199,17 @@ object Angular2SourceUtil {
   @Deprecated(message = "Use createPropertyInfo overload with function names list",
               replaceWith = ReplaceWith("createPropertyInfo(call, listOfNotNull(functionName), defaultName, getFunctionNameFromIndex)",
                                         "org.angular2.entities.source.Angular2SourceUtil.createPropertyInfo"))
-  fun createPropertyInfo(call: JSCallExpression, functionName: String?, defaultName: String,
-                         getFunctionNameFromIndex: (JSCallExpression) -> String?): Angular2PropertyInfo? =
+  fun createPropertyInfo(
+    call: JSCallExpression, functionName: String?, defaultName: String,
+    getFunctionNameFromIndex: (JSCallExpression) -> String?,
+  ): Angular2PropertyInfo? =
     createPropertyInfo(call, listOfNotNull(functionName), defaultName, getFunctionNameFromIndex)
 
   @JvmStatic
-  fun createPropertyInfo(call: JSCallExpression, functionNames: List<String>, defaultName: String,
-                         getFunctionNameFromIndex: (JSCallExpression) -> String?): Angular2PropertyInfo? {
+  fun createPropertyInfo(
+    call: JSCallExpression, functionNames: List<String>, defaultName: String,
+    getFunctionNameFromIndex: (JSCallExpression) -> String?,
+  ): Angular2PropertyInfo? {
     if (functionNames.isEmpty()) return null
     val referenceNames = getFunctionNameFromIndex(call)
                            ?.split('.')
@@ -234,18 +238,26 @@ object Angular2SourceUtil {
   @JvmStatic
   fun parseInputObjectLiteral(expr: JSObjectLiteralExpression, name: String): Angular2PropertyInfo {
     val aliasLiteral = expr.findProperty(Angular2DecoratorUtil.ALIAS_PROP)?.literalExpressionInitializer
+    val nameLiteral = expr.findProperty(Angular2DecoratorUtil.NAME_PROP)?.literalExpressionInitializer
     val alias = aliasLiteral?.stubSafeStringValue
     return Angular2PropertyInfo(
       alias ?: name,
       expr.findProperty(Angular2DecoratorUtil.REQUIRED_PROP)?.jsType?.asSafely<JSBooleanLiteralTypeImpl>()?.literal == true,
       expr,
       aliasLiteral,
-      declarationRange = if (alias != null) TextRange(1, 1 + alias.length) else null
+      declarationRange = if (alias != null) TextRange(1, 1 + alias.length) else null,
+      nameElement = nameLiteral
     )
   }
 
   @JvmStatic
   fun findComponentClass(templateContext: PsiElement): TypeScriptClass? {
+    if (templateContext.language is Angular2Language
+        && isHostBindingExpression(templateContext)) {
+      return Angular2DecoratorUtil.getClassForDecoratorElement(
+        InjectedLanguageManager.getInstance(templateContext.project).getInjectionHost(templateContext)
+      )
+    }
     return if (ApplicationManager.getApplication().let { it.isDispatchThread && !it.isUnitTestMode })
       WebJSResolveUtil.disableIndexUpToDateCheckIn(templateContext) {
         findComponentClasses(templateContext).firstOrNull()
@@ -346,7 +358,9 @@ object Angular2SourceUtil {
       actualDirectRefs = directRefs
     }
     for (ref in expressionToCheck.references) {
-      val el = ref.resolve()
+      val el = JSTypeEvaluationLocationProvider.withTypeEvaluationLocationForced(expressionToCheck) {
+        ref.resolve()
+      }
       if (actualDirectRefs) {
         if (el is PsiFile) {
           return el

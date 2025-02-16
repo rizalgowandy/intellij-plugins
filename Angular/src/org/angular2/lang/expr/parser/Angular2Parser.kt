@@ -5,9 +5,11 @@ import com.intellij.lang.PsiBuilder
 import com.intellij.lang.PsiBuilder.Marker
 import com.intellij.lang.WhitespacesBinders
 import com.intellij.lang.javascript.*
-import com.intellij.lang.javascript.parsing.*
+import com.intellij.lang.javascript.parsing.AdvancesLexer
+import com.intellij.lang.javascript.parsing.ExpressionParser
+import com.intellij.lang.javascript.parsing.JavaScriptParser
+import com.intellij.lang.javascript.parsing.StatementParser
 import com.intellij.openapi.util.Ref
-import com.intellij.openapi.util.text.StringUtil
 import com.intellij.psi.TokenType
 import com.intellij.psi.tree.IElementType
 import com.intellij.psi.tree.TokenSet
@@ -18,8 +20,8 @@ import org.angular2.lang.expr.Angular2Language
 import org.angular2.lang.expr.lexer.Angular2TokenTypes
 import org.angular2.lang.expr.parser.Angular2ElementTypes.Companion.createTemplateBindingStatement
 import org.angular2.lang.expr.parser.Angular2ElementTypes.Companion.createTemplateBindingsStatement
-import org.angular2.lang.expr.parser.Angular2Parser.Angular2ExpressionParser
-import org.angular2.lang.expr.parser.Angular2Parser.Angular2StatementParser
+import org.angular2.lang.expr.psi.Angular2TemplateBinding.KeyKind
+import org.angular2.templateBindingVarToDirectiveInput
 import org.jetbrains.annotations.NonNls
 
 class Angular2Parser private constructor(
@@ -27,21 +29,22 @@ class Angular2Parser private constructor(
   private val myIsAction: Boolean,
   private val myIsSimpleBinding: Boolean,
   private val myIsJavaScript: Boolean,
-) : JavaScriptParser<Angular2ExpressionParser, Angular2StatementParser, FunctionParser<*>, JSPsiTypeParser<*>>(
+) : JavaScriptParser(
   Angular2Language, builder
 ) {
   constructor(builder: PsiBuilder) : this(builder, false, false, true)
 
-  init {
-    myExpressionParser = Angular2ExpressionParser()
-    myStatementParser = Angular2StatementParser(this)
-  }
+  override val expressionParser: Angular2ExpressionParser =
+    Angular2ExpressionParser()
+
+  override val statementParser: Angular2StatementParser =
+    Angular2StatementParser(this)
 
   override fun isIdentifierToken(tokenType: IElementType?): Boolean {
     return JSKeywordSets.TS_IDENTIFIERS_TOKENS_SET.contains(tokenType)
   }
 
-  inner class Angular2StatementParser(parser: Angular2Parser?) : StatementParser<Angular2Parser?>(parser) {
+  inner class Angular2StatementParser(parser: Angular2Parser) : StatementParser<Angular2Parser>(parser) {
     fun parseChain(openParens: Int = 0, allowEmpty: Boolean = true) {
       assert(!myIsJavaScript)
       val chain = builder.mark()
@@ -51,7 +54,7 @@ class Angular2Parser private constructor(
       while (!builder.eof()) {
         count++
         val expression = builder.mark()
-        if (!expressionParser!!.parseExpressionOptional(false)) {
+        if (!expressionParser.parseExpressionOptional(false)) {
           builder.error(JavaScriptParserBundle.message("javascript.parser.message.expected.expression"))
           builder.advanceLexer()
           expression.drop()
@@ -142,6 +145,7 @@ class Angular2Parser private constructor(
       do {
         val binding = builder.mark()
         var isVar = false
+        var isLet = true
         var rawKey: String?
         var key: String?
         if (firstBinding) {
@@ -153,7 +157,7 @@ class Angular2Parser private constructor(
           isVar = builder.tokenType === JSTokenTypes.LET_KEYWORD
           if (isVar) builder.advanceLexer()
           rawKey = parseTemplateBindingKey(isVar)
-          key = if (isVar) rawKey else templateKey + StringUtil.capitalize(rawKey)
+          key = if (isVar) rawKey else templateBindingVarToDirectiveInput(rawKey, templateKey)
           if (builder.tokenType === JSTokenTypes.COLON) {
             builder.advanceLexer()
           }
@@ -173,17 +177,18 @@ class Angular2Parser private constructor(
           name = rawKey
           key = parseTemplateBindingKey(true)
           isVar = true
+          isLet = false
         }
         else if (builder.tokenType !== JSTokenTypes.LET_KEYWORD
-                 && !expressionParser!!.parsePipe()) {
+                 && !expressionParser.parsePipe()) {
           builder.error(JavaScriptParserBundle.message("javascript.parser.message.expected.expression"))
         }
-        binding.done(createTemplateBindingStatement(key, isVar, name))
+        binding.done(createTemplateBindingStatement(key, if (isVar) if (isLet) KeyKind.LET else KeyKind.AS else KeyKind.BINDING, name))
         if (builder.tokenType === JSTokenTypes.AS_KEYWORD && !isVar) {
           val localBinding = builder.mark()
           builder.advanceLexer()
           val letName = parseTemplateBindingKey(true)
-          localBinding.done(createTemplateBindingStatement(letName, true, key))
+          localBinding.done(createTemplateBindingStatement(letName, KeyKind.AS, key))
         }
         if (builder.tokenType === JSTokenTypes.SEMICOLON
             || builder.tokenType === JSTokenTypes.COMMA) {
@@ -225,7 +230,7 @@ class Angular2Parser private constructor(
     }
   }
 
-  inner class Angular2ExpressionParser : ExpressionParser<Angular2Parser?>(this@Angular2Parser) {
+  inner class Angular2ExpressionParser : ExpressionParser<Angular2Parser>(this@Angular2Parser) {
     override fun parseAssignmentExpression(allowIn: Boolean): Boolean {
       //In Angular EL Pipe is the top level expression instead of Assignment
       return parsePipe()
@@ -346,9 +351,8 @@ class Angular2Parser private constructor(
       else super.getCurrentBinarySignPriority(allowIn, advance)
     }
 
-    override fun getSafeAccessOperator(): IElementType? {
-      return JSTokenTypes.ELVIS
-    }
+    override val safeAccessOperator: IElementType
+      get() = JSTokenTypes.ELVIS
 
     override fun isReferenceQualifierSeparator(tokenType: IElementType?): Boolean {
       return tokenType === JSTokenTypes.DOT || tokenType === safeAccessOperator
@@ -382,12 +386,12 @@ class Angular2Parser private constructor(
     override fun parsePropertyNoMarker(property: Marker): Boolean {
       val firstToken = builder.tokenType
       val secondToken = builder.lookAhead(1)
-      if (myJavaScriptParser!!.isIdentifierName(firstToken) &&  // Angular, in contrast to ECMAScript, accepts Reserved Words here
+      if (parser.isIdentifierName(firstToken) &&  // Angular, in contrast to ECMAScript, accepts Reserved Words here
           (secondToken === JSTokenTypes.COMMA || secondToken === JSTokenTypes.RBRACE)) {
         val ref = builder.mark()
         builder.advanceLexer()
         ref.done(JSElementTypes.REFERENCE_EXPRESSION)
-        property.done(JSStubElementTypes.ES6_PROPERTY)
+        property.done(JSStubElementTypes.PROPERTY)
         return true
       }
       if (Angular2ElementTypes.PROPERTY_NAMES.contains(firstToken)) {
@@ -719,7 +723,7 @@ class Angular2Parser private constructor(
       rootMarker.done(root)
     }
 
-    fun parseJS(builder: PsiBuilder, root: IElementType?) {
+    fun parseJS(builder: PsiBuilder, root: IElementType) {
       Angular2Parser(builder).parseJS(root)
     }
 

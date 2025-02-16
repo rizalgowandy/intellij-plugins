@@ -3,13 +3,20 @@ package com.intellij.javascript.karma.runConfiguration
 
 import com.intellij.execution.configurations.RunConfiguration
 import com.intellij.javascript.karma.execution.KarmaRunConfiguration
+import com.intellij.javascript.karma.execution.KarmaRunSettings
+import com.intellij.javascript.karma.runConfiguration.infrastructure.KarmaRunConfigurationRunner
 import com.intellij.javascript.karma.scope.KarmaScopeKind
 import com.intellij.javascript.testFramework.runConfigurations.JsTestsRunConfigurationProducerTest
+import com.intellij.javascript.testFramework.runConfigurations.queries.FileQuery
 
-class KarmaRunConfigurationProducerTest: JsTestsRunConfigurationProducerTest<KarmaRunConfigurationProducerTest.KarmaSettingsFixture>() {
+class KarmaRunConfigurationProducerTest:
+  JsTestsRunConfigurationProducerTest<KarmaRunConfigurationProducerTest.KarmaSettingsFixture, KarmaRunConfiguration, KarmaRunSettings.Builder>()
+{
   override fun getBasePath() = "/contrib/js-karma/testData/runConfiguration/configurationProducer"
 
   override fun getRunConfigurationClass(): Class<*>? = KarmaRunConfiguration::class.java
+
+  override fun createRunConfigurationRunner(): KarmaRunConfigurationRunner = KarmaRunConfigurationRunner()
 
   // Jasmine
   fun `test forFile`() {
@@ -59,6 +66,23 @@ class KarmaRunConfigurationProducerTest: JsTestsRunConfigurationProducerTest<Kar
     assertGutterRunConfigurationSettings(
       fileQuery.forLine(14),
       baseSettingsFixture.forTest("test without suite")
+    )
+  }
+
+  fun `test guttersInFileWithoutTestName`() {
+    val fileQuery = FileQuery("src/file-with-some-name.js")
+    val baseSettingsFixture = KarmaSettingsFixture(KarmaScopeKind.SUITE, "src/file-with-some-name.js", "karma.conf.js", workingDir = "")
+
+    assertGuttersCount(fileQuery.filePath, 2)
+
+    assertGutterRunConfigurationSettings(
+      fileQuery.forLine(1),
+      baseSettingsFixture.forSuite("user")
+    )
+
+    assertGutterRunConfigurationSettings(
+      fileQuery.forLine(2),
+      baseSettingsFixture.forTest("user", "should be tested")
     )
   }
 
@@ -115,7 +139,7 @@ class KarmaRunConfigurationProducerTest: JsTestsRunConfigurationProducerTest<Kar
     val fileQuery = FileQuery("src/array.spec.js")
     val baseSettingsFixture = KarmaSettingsFixture(KarmaScopeKind.SUITE, "src/array.spec.js", "karma.conf.js", workingDir = "")
 
-    assertGuttersCount(fileQuery.filePath, 4)
+    assertGuttersCount(fileQuery.filePath, 3)
 
     assertGutterRunConfigurationSettings(
       fileQuery.forLine(1),
@@ -132,10 +156,6 @@ class KarmaRunConfigurationProducerTest: JsTestsRunConfigurationProducerTest<Kar
     assertGutterRunConfigurationSettings(
       fileQuery.forLine(4),
       baseSettingsFixture.forTest("Top level suite", "Subsuite", "Test in subsuite")
-    )
-    assertGutterRunConfigurationSettings(
-      fileQuery.forLine(10),
-      baseSettingsFixture.forTest("Top level test")
     )
   }
 
@@ -162,11 +182,6 @@ class KarmaRunConfigurationProducerTest: JsTestsRunConfigurationProducerTest<Kar
       "Test in subsuite",
       fileQuery.forPsiElement("test", 4, 8),
       baseSettingsFixture.forTest("Top level suite", "Subsuite", "Test in subsuite")
-    )
-    asserPsiElementInFileRunConfigurationSettings(
-      "Top level test",
-      fileQuery.forPsiElement("test", 10, 3),
-      baseSettingsFixture.forTest("Top level test")
     )
   }
 

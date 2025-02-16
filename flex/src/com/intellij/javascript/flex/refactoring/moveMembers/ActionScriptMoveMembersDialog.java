@@ -47,6 +47,7 @@ import com.intellij.util.ThreeState;
 import org.jetbrains.annotations.NonNls;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
+import org.jetbrains.annotations.Unmodifiable;
 
 import javax.swing.*;
 import javax.swing.border.Border;
@@ -59,7 +60,7 @@ public class ActionScriptMoveMembersDialog extends RefactoringDialog implements 
   private static final @NonNls String RECENTS_KEY = "JSMoveMembersDialog.RECENTS_KEY";
   private final JSClass mySourceClass;
   private final String mySourceClassName;
-  private final List<JSMemberInfo> myMemberInfos = new ArrayList<>();
+  private final @Unmodifiable List<JSMemberInfo> myMemberInfos;
   private final JSReferenceEditor myTfTargetClassName;
   private JSMemberSelectionTable myTable;
   private final MoveCallback myMoveCallback;
@@ -79,11 +80,12 @@ public class ActionScriptMoveMembersDialog extends RefactoringDialog implements 
 
     mySourceClassName = mySourceClass.getQualifiedName();
 
-    JSMemberInfo.extractStaticMembers(sourceClass, myMemberInfos, new JSMemberInfo.EmptyFilter<JSAttributeListOwner>());
-    for (JSMemberInfo memberInfo : myMemberInfos) {
+    List<JSMemberInfo> infos = new ArrayList<>();
+    JSMemberInfo.extractStaticMembers(sourceClass, infos, new JSMemberInfo.EmptyFilter<JSAttributeListOwner>());
+    for (JSMemberInfo memberInfo : infos) {
       memberInfo.setChecked(preselectMembers);
     }
-    JSMemberInfo.sortByOffset(myMemberInfos);
+    myMemberInfos = JSMemberInfo.sortByOffset(infos);
 
     String fqName = initialTargetClass != null && !sourceClass.equals(initialTargetClass) ? initialTargetClass.getQualifiedName() : "";
     myTfTargetClassName = createTargetClassField(project, fqName, getScope(), mySourceClass.getContainingFile());
@@ -214,7 +216,7 @@ public class ActionScriptMoveMembersDialog extends RefactoringDialog implements 
     String message = validateInputData();
 
     if (message != null) {
-      if (message.length() != 0) {
+      if (!message.isEmpty()) {
         CommonRefactoringUtil
           .showErrorMessage(StringUtil.capitalizeWords(JavaScriptBundle.message("move.members.refactoring.name"), true), message, null, myProject);
       }

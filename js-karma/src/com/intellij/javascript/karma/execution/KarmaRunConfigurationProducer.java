@@ -1,4 +1,4 @@
-// Copyright 2000-2018 JetBrains s.r.o. Use of this source code is governed by the Apache 2.0 license that can be found in the LICENSE file.
+// Copyright 2000-2024 JetBrains s.r.o. and contributors. Use of this source code is governed by the Apache 2.0 license.
 package com.intellij.javascript.karma.execution;
 
 import com.intellij.execution.actions.ConfigurationContext;
@@ -6,13 +6,11 @@ import com.intellij.execution.actions.ConfigurationFromContext;
 import com.intellij.execution.configurations.ConfigurationFactory;
 import com.intellij.javascript.karma.scope.KarmaScopeKind;
 import com.intellij.javascript.karma.util.KarmaUtil;
+import com.intellij.javascript.testFramework.AbstractTestFileStructure;
 import com.intellij.javascript.testFramework.JsTestElementPath;
 import com.intellij.javascript.testFramework.PreferableRunConfiguration;
-import com.intellij.javascript.testFramework.interfaces.mochaTdd.MochaTddFileStructure;
-import com.intellij.javascript.testFramework.interfaces.mochaTdd.MochaTddFileStructureBuilder;
-import com.intellij.javascript.testFramework.jasmine.JasmineFileStructure;
-import com.intellij.javascript.testFramework.jasmine.JasmineFileStructureBuilder;
 import com.intellij.javascript.testing.JsPackageDependentTestRunConfigurationProducer;
+import com.intellij.javascript.testing.detection.JsTestFrameworkDetector;
 import com.intellij.lang.javascript.psi.JSFile;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.roots.ProjectFileIndex;
@@ -35,10 +33,14 @@ public final class KarmaRunConfigurationProducer extends JsPackageDependentTestR
     super(Collections.singletonList(KarmaUtil.KARMA_PACKAGE_NAME));
   }
 
-  @NotNull
   @Override
-  public ConfigurationFactory getConfigurationFactory() {
+  public @NotNull ConfigurationFactory getConfigurationFactory() {
     return KarmaConfigurationType.getInstance();
+  }
+
+  @Override
+  public KarmaDetector getTestFrameworkDetector() {
+    return KarmaDetector.Companion.getInstance();
   }
 
   @Override
@@ -60,9 +62,8 @@ public final class KarmaRunConfigurationProducer extends JsPackageDependentTestR
     return false;
   }
 
-  @Nullable
-  private static Pair<KarmaRunSettings, PsiElement> setup(@Nullable PsiElement element,
-                                                          @NotNull KarmaRunSettings templateSettings) {
+  private static @Nullable Pair<KarmaRunSettings, PsiElement> setup(@Nullable PsiElement element,
+                                                                    @NotNull KarmaRunSettings templateSettings) {
     JSFile file = ObjectUtils.tryCast(element != null ? element.getContainingFile() : null, JSFile.class);
     VirtualFile virtualFile = PsiUtilCore.getVirtualFile(file);
     if (virtualFile == null) {
@@ -79,7 +80,7 @@ public final class KarmaRunConfigurationProducer extends JsPackageDependentTestR
                            .setScopeKind(KarmaScopeKind.ALL)
                            .setConfigPath(virtualFile.getPath()).build(), file);
     }
-    if (file.getTestFileType() != null) {
+    if (KarmaDetector.Companion.getInstance().hasTestsInFile(file)) {
       KarmaRunSettings settings = guessConfigFileIfNeeded(templateSettings, virtualFile, element.getProject());
       return Pair.create(settings.toBuilder()
                            .setScopeKind(KarmaScopeKind.TEST_FILE)
@@ -88,21 +89,19 @@ public final class KarmaRunConfigurationProducer extends JsPackageDependentTestR
     return null;
   }
 
-  @Nullable
-  private static Pair<KarmaRunSettings, PsiElement> setupAsSuiteOrTest(@NotNull JSFile file,
-                                                                       @NotNull VirtualFile virtualFile,
-                                                                       @NotNull PsiElement element,
-                                                                       @NotNull KarmaRunSettings templateSettings) {
+  private static @Nullable Pair<KarmaRunSettings, PsiElement> setupAsSuiteOrTest(@NotNull JSFile file,
+                                                                                 @NotNull VirtualFile virtualFile,
+                                                                                 @NotNull PsiElement element,
+                                                                                 @NotNull KarmaRunSettings templateSettings) {
     TextRange textRange = element.getTextRange();
     if (textRange == null || !file.isTestFile()) {
       return null;
     }
-    JasmineFileStructure jasmineStructure = JasmineFileStructureBuilder.getInstance().fetchCachedTestFileStructure(file);
-    JsTestElementPath path = jasmineStructure.findTestElementPath(textRange);
-    if (path == null) {
-      MochaTddFileStructure mochaTddFileStructure = MochaTddFileStructureBuilder.getInstance().fetchCachedTestFileStructure(file);
-      path = mochaTddFileStructure.findTestElementPath(textRange);
+    AbstractTestFileStructure testsStructure = KarmaDetector.Companion.getInstance().findTestsStructure(file);
+    if (testsStructure == null) {
+      return null;
     }
+    JsTestElementPath path = testsStructure.findTestElementPath(textRange);
     if (path != null) {
       templateSettings = guessConfigFileIfNeeded(templateSettings, virtualFile, element.getProject());
       KarmaRunSettings.Builder builder = templateSettings.toBuilder();
@@ -121,10 +120,9 @@ public final class KarmaRunConfigurationProducer extends JsPackageDependentTestR
     return null;
   }
 
-  @NotNull
-  private static KarmaRunSettings guessConfigFileIfNeeded(@NotNull KarmaRunSettings settings,
-                                                          @NotNull VirtualFile contextFile,
-                                                          @NotNull Project project) {
+  private static @NotNull KarmaRunSettings guessConfigFileIfNeeded(@NotNull KarmaRunSettings settings,
+                                                                   @NotNull VirtualFile contextFile,
+                                                                   @NotNull Project project) {
     if (!settings.getConfigPathSystemDependent().isEmpty()) {
       return settings;
     }

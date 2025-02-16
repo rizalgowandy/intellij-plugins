@@ -2,10 +2,10 @@
 package org.intellij.terraform.hil;
 
 import com.intellij.lang.Language;
-import org.intellij.terraform.TerraformTestUtils;
+import org.intellij.terraform.TfTestUtils;
 import org.intellij.terraform.config.CompletionTestCase;
-import org.intellij.terraform.config.codeinsight.TerraformCompletionUtil;
-import org.intellij.terraform.config.model.Function;
+import org.intellij.terraform.config.codeinsight.TfCompletionUtil;
+import org.intellij.terraform.config.model.TfFunction;
 import org.intellij.terraform.config.model.TypeModelProvider;
 import org.jetbrains.annotations.NotNull;
 
@@ -18,7 +18,7 @@ import static org.assertj.core.api.BDDAssertions.then;
 public class HILCompletionTest extends CompletionTestCase {
   @Override
   protected String getTestDataPath() {
-    return TerraformTestUtils.getTestDataRelativePath();
+    return TfTestUtils.getTestDataRelativePath();
   }
 
   @Override
@@ -43,11 +43,11 @@ public class HILCompletionTest extends CompletionTestCase {
   @NotNull
   private static SortedSet<String> getGlobalAvailable() {
     final TreeSet<String> result = new TreeSet<>();
-    final Collection<Function> functions = TypeModelProvider.getGlobalModel().getFunctions();
-    for (Function function : functions) {
+    final Collection<TfFunction> functions = TypeModelProvider.getGlobalModel().getFunctions();
+    for (TfFunction function : functions) {
       result.add(function.getName());
     }
-    result.addAll(TerraformCompletionUtil.INSTANCE.getGlobalScopes());
+    result.addAll(TfCompletionUtil.INSTANCE.getGlobalScopes());
     return result;
   }
 
@@ -306,5 +306,13 @@ public class HILCompletionTest extends CompletionTestCase {
                             output "x" {
                               value = "${azurerm_linux_virtual_machine.example.os_disk.<caret>}"
                             }""", "caching", "storage_account_type");
+  }
+
+  public void testDefinedFunctionsCompletion() {
+    doBasicCompletionTest(
+      "test = '${aws<caret>}'",
+      3,
+      "provider::aws::arn_build", "provider::aws::arn_parse", "provider::aws::trim_iam_role_path"
+    );
   }
 }

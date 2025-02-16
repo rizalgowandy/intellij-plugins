@@ -13,13 +13,17 @@ import com.intellij.openapi.application.ReadAction
 import com.intellij.openapi.diagnostic.Logger
 import com.intellij.openapi.progress.ProgressManager
 import com.intellij.openapi.project.Project
-import com.intellij.openapi.util.*
+import com.intellij.openapi.util.Key
+import com.intellij.openapi.util.ModificationTracker
+import com.intellij.openapi.util.SimpleModificationTracker
+import com.intellij.openapi.util.UserDataHolder
 import com.intellij.openapi.util.io.FileUtil
 import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.psi.PsiElement
 import com.intellij.psi.PsiFile
 import com.intellij.psi.PsiManager
 import com.intellij.psi.util.CachedValueProvider
+import com.intellij.util.ConcurrencyUtil
 import com.intellij.util.concurrency.AppExecutorUtil
 import com.intellij.util.io.HttpRequests
 import org.jetbrains.annotations.NonNls
@@ -32,8 +36,6 @@ import java.nio.file.Paths
 import java.util.*
 import java.util.concurrent.*
 import java.util.function.Supplier
-import kotlin.Pair
-import kotlin.Throws
 
 class AngularCliSchematicsRegistryServiceImpl : AngularCliSchematicsRegistryService() {
 
@@ -160,7 +162,7 @@ class AngularCliSchematicsRegistryServiceImpl : AngularCliSchematicsRegistryServ
         }
         cacheComputation = myCacheComputation!!
       }
-      var result: T? = JSLanguageServiceUtil.awaitFuture(cacheComputation, timeout, 10, false, null)
+      var result: T? = JSLanguageServiceUtil.awaitFuture(cacheComputation, timeout, false, null)
       synchronized(this) {
         if (myCacheComputation != null && myCacheComputation!!.isDone) {
           try {
@@ -313,17 +315,7 @@ class AngularCliSchematicsRegistryServiceImpl : AngularCliSchematicsRegistryServ
     }
 
     private fun getCachedSchematics(dataHolder: UserDataHolder, key: Key<CachedSchematics>): CachedSchematics {
-      var result = dataHolder.getUserData(key)
-      if (result != null) {
-        return result
-      }
-
-      if (dataHolder is UserDataHolderEx) {
-        return dataHolder.putUserDataIfAbsent(key, CachedSchematics())
-      }
-      result = CachedSchematics()
-      dataHolder.putUserData(key, result)
-      return result
+      return ConcurrencyUtil.computeIfAbsent(dataHolder, key) { CachedSchematics() }
     }
   }
 }

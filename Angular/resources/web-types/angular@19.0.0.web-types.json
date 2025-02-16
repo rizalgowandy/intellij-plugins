@@ -35,7 +35,8 @@
           "value": {
             "required": true,
             "kind": "plain"
-          }
+          },
+          "ng-host-binding": false
         },
         {
           "name": "ngSkipHydration",
@@ -43,7 +44,8 @@
           "description": "You can add the `ngSkipHydration` attribute to a component's tag in order to skip hydrating the entire component. This is useful for component, which may not work properly with hydration enabled due to issues, like [Direct DOM Manipulation](https://angular.dev/guide/hydration#direct-dom-manipulation).",
           "value": {
             "kind": "no-value"
-          }
+          },
+          "ng-host-binding": false
         }
       ],
       "ng-blocks": [
@@ -67,7 +69,8 @@
                   "name": "never",
                   "doc-url": "https://angular.dev/guide/defer",
                   "description": "`hydrate never` tells Angular to leave your component dehydrated indefinitely, effectively treating it as static content. Note that this is not the same as a server-only component. When a `@defer` block is instantiated during normal client-side rendering, the content is still fetched and rendered normally.",
-                  "no-content": true
+                  "no-content": true,
+                  "unique": true
                 },
                 {
                   "name": "when",

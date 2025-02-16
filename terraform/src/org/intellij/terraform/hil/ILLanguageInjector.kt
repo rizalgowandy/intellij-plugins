@@ -7,13 +7,12 @@ import com.intellij.psi.LanguageInjector
 import com.intellij.psi.PsiLanguageInjectionHost
 import it.unimi.dsi.fastutil.ints.IntArrayList
 import it.unimi.dsi.fastutil.ints.IntList
-import org.intellij.terraform.config.patterns.TerraformPatterns
+import org.intellij.terraform.config.patterns.TfPsiPatterns
 import org.intellij.terraform.hcl.psi.HCLFile
 import org.intellij.terraform.hcl.psi.HCLHeredocContent
 import org.intellij.terraform.hcl.psi.HCLStringLiteral
 import org.intellij.terraform.hcl.psi.impl.HCLPsiImplUtils
 import org.intellij.terraform.hil.HILElementTypes.*
-import org.intellij.terraform.hil.psi.HILLexer
 
 internal class ILLanguageInjector : LanguageInjector {
   override fun getLanguagesToInject(host: PsiLanguageInjectionHost, places: InjectedLanguagePlaces) {
@@ -37,7 +36,7 @@ internal class ILLanguageInjector : LanguageInjector {
       val file = host.containingFile
       if (file !is HCLFile || !file.isInterpolationsAllowed()) return
       // Restrict interpolations in .tfvars files // TODO: This file shouldn't know about .tfvars here
-      if (TerraformPatterns.TerraformVariablesFile.accepts(file)) return
+      if (TfPsiPatterns.TerraformVariablesFile.accepts(file)) return
       if (host is HCLStringLiteral) return getStringLiteralInjections(host, places, type)
       if (host is HCLHeredocContent) return getHCLHeredocContentInjections(host, places, type)
       return

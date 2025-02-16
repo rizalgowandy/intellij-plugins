@@ -15,14 +15,14 @@ import com.intellij.psi.PsiElement
 import com.intellij.psi.util.PsiTreeUtil
 import com.intellij.util.ProcessingContext
 import org.intellij.terraform.config.Constants
-import org.intellij.terraform.config.codeinsight.TerraformCompletionUtil.GlobalScopes
-import org.intellij.terraform.config.codeinsight.TerraformCompletionUtil.createFunction
-import org.intellij.terraform.config.codeinsight.TerraformCompletionUtil.createScope
-import org.intellij.terraform.config.codeinsight.TerraformConfigCompletionContributor
-import org.intellij.terraform.config.codeinsight.TerraformLookupElementRenderer
+import org.intellij.terraform.config.codeinsight.TfCompletionUtil.GlobalScopes
+import org.intellij.terraform.config.codeinsight.TfCompletionUtil.createFunction
+import org.intellij.terraform.config.codeinsight.TfCompletionUtil.createScope
+import org.intellij.terraform.config.codeinsight.TfConfigCompletionContributor
+import org.intellij.terraform.config.codeinsight.TfLookupElementRenderer
 import org.intellij.terraform.config.codeinsight.TfModelHelper
 import org.intellij.terraform.config.model.*
-import org.intellij.terraform.config.patterns.TerraformPatterns
+import org.intellij.terraform.config.patterns.TfPsiPatterns
 import org.intellij.terraform.hcl.HCLLanguage
 import org.intellij.terraform.hcl.psi.*
 import org.intellij.terraform.hcl.psi.HCLPsiUtil.getPrevSiblingNonWhiteSpace
@@ -50,7 +50,6 @@ import org.intellij.terraform.opentofu.patterns.OpenTofuPatterns.EncryptionMetho
 import org.intellij.terraform.opentofu.patterns.OpenTofuPatterns.IlseOpenTofuEncryptionMethod
 import org.intellij.terraform.opentofu.patterns.OpenTofuPatterns.IlseOpenTofuKeyProvider
 import org.intellij.terraform.opentofu.patterns.OpenTofuPatterns.KeyProviderBlock
-import java.util.*
 
 open class HILCompletionContributor : CompletionContributor(), DumbAware {
   private val scopeProviders = listOf(
@@ -60,7 +59,7 @@ open class HILCompletionContributor : CompletionContributor(), DumbAware {
     ModuleCompletionProvider,
     PathCompletionProvider,
     SelfCompletionProvider,
-    TerraformCompletionProvider,
+    TfCompletionProvider,
     VariableCompletionProvider,
     KeyProvidersCompletionProvider,
     EncryptionMethodsCompletionProvider
@@ -157,7 +156,7 @@ open class HILCompletionContributor : CompletionContributor(), DumbAware {
     }
   }
 
-  private object TerraformCompletionProvider : SelectFromScopeCompletionProvider("terraform") {
+  private object TfCompletionProvider : SelectFromScopeCompletionProvider("terraform") {
     override fun doAddCompletions(variable: Identifier,
                                   parameters: CompletionParameters,
                                   context: ProcessingContext,
@@ -207,7 +206,7 @@ open class HILCompletionContributor : CompletionContributor(), DumbAware {
     }
   }
 
-  private object MethodsCompletionProvider : TerraformConfigCompletionContributor.TfCompletionProvider() {
+  private object MethodsCompletionProvider : TfConfigCompletionContributor.TfCompletionProvider() {
     override fun addCompletions(parameters: CompletionParameters, context: ProcessingContext, result: CompletionResultSet) {
       val position = parameters.position
       val parent = position.parent as? BaseExpression ?: return
@@ -218,7 +217,7 @@ open class HILCompletionContributor : CompletionContributor(), DumbAware {
       val block = PsiTreeUtil.getParentOfType(parent, HCLBlock::class.java)
       if (property != null && property.nameIdentifier == parent) return
       if (block != null && property != null) {
-        val isRootBlock = TerraformPatterns.RootBlock.accepts(block)
+        val isRootBlock = TfPsiPatterns.RootBlock.accepts(block)
         val type = (if (isRootBlock) block else PsiTreeUtil.getTopmostParentOfType(parent, HCLBlock::class.java))?.getNameElementUnquoted(0)
 
         if (property.parent?.parent !== block) {
@@ -248,7 +247,10 @@ open class HILCompletionContributor : CompletionContributor(), DumbAware {
           return
         }
       }
-      result.addAllElements(TypeModelProvider.getModel(parent).functions.map { createFunction(it) })
+      val model = TypeModelProvider.getModel(parent)
+      result.addAllElements(model.functions.map { createFunction(it) })
+      result.addAllElements(model.providerDefinedFunctions.map { createFunction(it) })
+
       result.addAllElements(GlobalScopes.map { createScope(it) })
       if (getProvisionerOrConnectionResource(parent) != null) result.addElement(createScope("self"))
 
@@ -377,7 +379,7 @@ open class HILCompletionContributor : CompletionContributor(), DumbAware {
       }
 
     private fun getBlockProperties(r: HCLBlock, contextType: HilContainingBlockType, isEachValueProp: Boolean, found: ArrayList<LookupElement>) {
-      if (TerraformPatterns.VariableRootBlock.accepts(r)) {
+      if (TfPsiPatterns.VariableRootBlock.accepts(r)) {
         val variable = Variable(r)
         val defaultMap = variable.getDefault()
         if (defaultMap is HCLObject && !isEachValueProp) {
@@ -386,13 +388,13 @@ open class HILCompletionContributor : CompletionContributor(), DumbAware {
         collectTypeVariants(variable.getType(), found)
         return
       }
-      else if (TerraformPatterns.ModuleRootBlock.accepts(r)) {
+      else if (TfPsiPatterns.ModuleRootBlock.accepts(r)) {
         val module = Module.getAsModuleBlock(r)
         if (module != null) {
           // TODO: Add special LookupElementRenderer
           val suitableBlocks = when (contextType) {
             HilContainingBlockType.IMPORT_OR_MOVED_BLOCK -> {
-              module.getDeclaredResources().mapNotNull { resourceDeclaration -> getResourceTypeAndName(resourceDeclaration) }
+              module.getDeclaredResources().map { resourceDeclaration -> getResourceTypeAndName(resourceDeclaration) }
             }
             HilContainingBlockType.UNSPECIFIED -> {
               module.getDefinedOutputs().map { it.name }
@@ -402,7 +404,7 @@ open class HILCompletionContributor : CompletionContributor(), DumbAware {
         }
         return
       }
-      else if (TerraformPatterns.OutputRootBlock.accepts(r)) {
+      else if (TfPsiPatterns.OutputRootBlock.accepts(r)) {
         val outputValue = r.`object`?.findProperty(TypeModel.ValueProperty.name)?.value
         if (outputValue is HCLObject) {
           handleHCLObject(outputValue, found)
@@ -412,7 +414,7 @@ open class HILCompletionContributor : CompletionContributor(), DumbAware {
       }
       val properties = TfModelHelper.getBlockProperties(r).filterKeys { it != Constants.HAS_DYNAMIC_ATTRIBUTES }
       val done = properties.keys.toSet()
-      found.addAll(properties.values.map { create(it.name).withRenderer(TerraformLookupElementRenderer()) })
+      found.addAll(properties.values.map { create(it.name).withRenderer(TfLookupElementRenderer()) })
       val pl = r.`object`?.propertyList
       if (pl != null) {
         found.addAll(pl.map { it.name }.filter { it !in done }.map { create(it) })
@@ -444,7 +446,7 @@ open class HILCompletionContributor : CompletionContributor(), DumbAware {
 
   }
 
-  private object ResourceTypesCompletionProvider : TerraformConfigCompletionContributor.TfCompletionProvider() {
+  private object ResourceTypesCompletionProvider : TfConfigCompletionContributor.TfCompletionProvider() {
     override fun addCompletions(parameters: CompletionParameters, context: ProcessingContext, result: CompletionResultSet) {
       val position = parameters.position
       val parent = position.parent as? BaseExpression ?: return
@@ -458,7 +460,7 @@ open class HILCompletionContributor : CompletionContributor(), DumbAware {
       if (property != null && property.nameIdentifier == parent) return
       if (block != null && property != null) {
         val type = block.getNameElementUnquoted(0)
-        val isRootBlock = TerraformPatterns.RootBlock.accepts(block)
+        val isRootBlock = TfPsiPatterns.RootBlock.accepts(block)
 
         if (property.parent?.parent !== block) {
           if (property.parent is HCLObject && property.parent.parent is HCLProperty) {

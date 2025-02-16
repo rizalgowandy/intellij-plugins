@@ -33,18 +33,18 @@ import kotlin.math.max
 object Angular2EntityUtils {
 
   @NonNls
-  const val ELEMENT_REF = "ElementRef"
+  const val ELEMENT_REF: String = "ElementRef"
 
   @NonNls
-  const val TEMPLATE_REF = "TemplateRef"
+  const val TEMPLATE_REF: String = "TemplateRef"
 
   @NonNls
-  const val VIEW_CONTAINER_REF = "ViewContainerRef"
+  const val VIEW_CONTAINER_REF: String = "ViewContainerRef"
 
-  const val NG_ACCEPT_INPUT_TYPE_PREFIX = "ngAcceptInputType_"
+  const val NG_ACCEPT_INPUT_TYPE_PREFIX: String = "ngAcceptInputType_"
 
   private const val INDEX_ELEMENT_NAME_PREFIX = ">"
-  const val anyElementDirectiveIndexName = "E"
+  const val anyElementDirectiveIndexName: String = "E"
   private const val INDEX_ATTRIBUTE_NAME_PREFIX = "="
 
   @JvmStatic
@@ -84,11 +84,13 @@ object Angular2EntityUtils {
     context: PsiElement?,
     declaration: Boolean,
   ): PropertyDeclarationOrReferenceInfo? {
-    val ownerProp = if (declaration) Angular2DecoratorUtil.ALIAS_PROP else Angular2DecoratorUtil.NAME_PROP
     val contextParent = context?.parent ?: return null
     val parent = contextParent.let { parent ->
       if (parent is JSProperty)
-        parent.takeIf { property -> property.name == ownerProp }?.parent?.parent
+        parent.takeIf { property ->
+          property.name == Angular2DecoratorUtil.NAME_PROP
+          || declaration && property.name == Angular2DecoratorUtil.ALIAS_PROP
+        }?.parent?.parent
       else
         parent
     }
@@ -208,7 +210,7 @@ object Angular2EntityUtils {
     try {
       selectors = Angular2DirectiveSimpleSelector.parse(selector)
     }
-    catch (e: ParseException) {
+    catch (_: ParseException) {
       return emptySet()
     }
 

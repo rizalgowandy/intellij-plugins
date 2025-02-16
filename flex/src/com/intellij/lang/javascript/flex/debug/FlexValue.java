@@ -1,4 +1,4 @@
-// Copyright 2000-2024 JetBrains s.r.o. and contributors. Use of this source code is governed by the Apache 2.0 license.
+// Copyright 2000-2025 JetBrains s.r.o. and contributors. Use of this source code is governed by the Apache 2.0 license.
 package com.intellij.lang.javascript.flex.debug;
 
 import com.intellij.javascript.flex.mxml.MxmlJSClass;
@@ -30,6 +30,7 @@ import com.intellij.xdebugger.XExpression;
 import com.intellij.xdebugger.XSourcePosition;
 import com.intellij.xdebugger.evaluation.XDebuggerEvaluator;
 import com.intellij.xdebugger.frame.*;
+import org.jetbrains.annotations.ApiStatus;
 import org.jetbrains.annotations.NonNls;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -38,7 +39,8 @@ import org.jetbrains.debugger.DebuggerSupportUtils;
 import javax.swing.*;
 import java.util.*;
 
-class FlexValue extends XValue {
+@ApiStatus.Internal
+public final class FlexValue extends XValue {
   private final FlexStackFrame myFlexStackFrame;
   private final FlexDebugProcess myDebugProcess;
   private final @Nullable XSourcePosition mySourcePosition;
@@ -420,7 +422,7 @@ class FlexValue extends XValue {
 
         while (tokenizer.hasMoreElements()) {
           final String s = tokenizer.nextToken().trim();
-          if (s.length() == 0) continue;
+          if (s.isEmpty()) continue;
           final int delimIndex = s.indexOf(FlexStackFrame.DELIM);
           if (delimIndex == -1) {
             FlexDebugProcess.log("Unrecognized string:" + s);
@@ -438,7 +440,7 @@ class FlexValue extends XValue {
 
           String evaluatedPath = myExpression;
 
-          if (fieldName.length() > 0 && Character.isDigit(fieldName.charAt(0))) {
+          if (!fieldName.isEmpty() && Character.isDigit(fieldName.charAt(0))) {
             evaluatedPath += "[\"" + fieldName + "\"]";
           }
           else {

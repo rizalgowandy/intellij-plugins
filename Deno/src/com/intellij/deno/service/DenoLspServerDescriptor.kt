@@ -14,7 +14,7 @@ import com.intellij.execution.process.ProcessListener
 import com.intellij.execution.process.ProcessOutputTypes
 import com.intellij.javascript.nodejs.NodeCommandLineUtil
 import com.intellij.javascript.nodejs.execution.withBackgroundProgress
-import com.intellij.lang.typescript.compiler.TypeScriptService
+import com.intellij.lang.typescript.compiler.TypeScriptServiceRestarter
 import com.intellij.lang.typescript.lsp.BaseLspTypeScriptServiceCompletionSupport
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.components.PathMacroManager
@@ -34,7 +34,6 @@ import com.intellij.platform.lsp.api.customization.LspFormattingSupport
 import com.intellij.platform.lsp.api.lsWidget.LspServerWidgetItem
 import com.intellij.psi.search.FilenameIndex
 import com.intellij.psi.search.GlobalSearchScope
-import kotlinx.coroutines.Runnable
 import org.eclipse.lsp4j.Command
 import java.nio.file.Files
 import java.nio.file.Paths
@@ -191,7 +190,7 @@ class DenoLspServerDescriptor(project: Project) : ProjectWideLspServerDescriptor
 
             ApplicationManager.getApplication().invokeLater(Runnable {
               DenoSettings.getService(project).updateLibraries()
-              TypeScriptService.restartServices(project)
+              TypeScriptServiceRestarter.restartServices(project)
               DaemonCodeAnalyzer.getInstance(project).restart()
             }, project.disposed)
           }

@@ -44,8 +44,8 @@ import org.intellij.terraform.config.model.ProviderTier
 import org.intellij.terraform.config.model.TypeModel
 import org.intellij.terraform.config.model.TypeModelProvider
 import org.intellij.terraform.config.model.getVFSParents
-import org.intellij.terraform.config.model.loader.TerraformMetadataLoader
-import org.intellij.terraform.config.util.TFExecutor
+import org.intellij.terraform.config.model.loader.TfMetadataLoader
+import org.intellij.terraform.config.util.TfExecutor
 import org.intellij.terraform.config.util.executeSuspendable
 import org.intellij.terraform.config.util.getApplicableToolType
 import org.intellij.terraform.hcl.HCLBundle
@@ -345,7 +345,7 @@ class LocalSchemaService(val project: Project, val scope: CoroutineScope) {
   }
 
   private fun buildModelFromJson(json: String): TypeModel {
-    val loader = TerraformMetadataLoader()
+    val loader = TfMetadataLoader()
     json.byteInputStream().use { input ->
       loader.loadOne("local-schema.json", input)
     }
@@ -358,7 +358,7 @@ class LocalSchemaService(val project: Project, val scope: CoroutineScope) {
     val capturingProcessAdapter = CapturingProcessAdapter()
 
     val toolType = getApplicableToolType(lock)
-    val success = TFExecutor.`in`(project, toolType)
+    val success = TfExecutor.`in`(project, toolType)
       .withPresentableName(HCLBundle.message("rebuilding.local.schema"))
       .withParameters("providers", "schema", "-json")
       .withWorkDirectory(lock.parent.path)

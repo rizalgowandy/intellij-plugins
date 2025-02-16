@@ -80,7 +80,8 @@
           "priority": "high",
           "value": {
             "required": false
-          }
+          },
+          "ng-host-binding": false
         },
         {
           "name": "ngNonBindable",
@@ -89,7 +90,8 @@
           "priority": "high",
           "value": {
             "kind": "no-value"
-          }
+          },
+          "ng-host-binding": false
         },
         {
           "name": "ngProjectAs",
@@ -99,7 +101,8 @@
           "value": {
             "required": true,
             "type": "string"
-          }
+          },
+          "ng-host-binding": false
         },
         {
           "name": "Angular directive attribute selector",
@@ -120,11 +123,11 @@
           },
           "ng-binding-pattern": true,
           "pattern": {
-            "delegate": "ng-event-binding-items",
+            "items": "/html/ng-event-bindings",
             "or": [
               [
                 "(",
-                "#item",
+                "#item:event",
                 ")"
               ],
               [
@@ -135,7 +138,7 @@
                   ]
                 },
                 "#...",
-                "#item"
+                "#item:event"
               ],
               [
                 {
@@ -147,7 +150,7 @@
                 "#...",
                 "on-",
                 "#...",
-                "#item"
+                "#item:event"
               ],
               [
                 {
@@ -158,34 +161,10 @@
                 },
                 "#...",
                 "(",
-                "#item",
+                "#item:event",
                 ")"
               ]
             ]
-          },
-          "ng-event-binding-items": {
-            "ng-binding-pattern": true,
-            "pattern": {
-              "or": [
-                {
-                  "items": [
-                    "/js/events",
-                    "/js/ng-directive-outputs"
-                  ],
-                  "priority": "high",
-                  "template": [
-                    "#item:event"
-                  ]
-                },
-                {
-                  "items": "/js/ng-custom-events",
-                  "priority": "normal",
-                  "template": [
-                    "#item:event"
-                  ]
-                }
-              ]
-            }
           }
         },
         {
@@ -310,6 +289,7 @@
             "kind": "expression"
           },
           "ng-binding-pattern": true,
+          "ng-host-binding": false,
           "pattern": {
             "items": "/js/ng-structural-directives",
             "or": [
@@ -371,6 +351,7 @@
         {
           "name": "Reference variable declaration",
           "virtual": true,
+          "ng-host-binding": false,
           "pattern": {
             "items": "ng-reference-declaration",
             "priority": "lowest",
@@ -438,6 +419,7 @@
           "doc-url": "https://angular.io/guide/i18n-common-prepare",
           "virtual": true,
           "ng-binding-pattern": true,
+          "ng-host-binding": false,
           "pattern": {
             "items": "/html/ng-i18n-attributes",
             "template": [
@@ -620,6 +602,33 @@
           },
           "hide-from-completion": true
         }
+      ],
+      "ng-event-bindings": [
+        {
+          "name": "Event Binding",
+          "ng-binding-pattern": true,
+          "pattern": {
+            "or": [
+              {
+                "items": [
+                  "/js/events",
+                  "/js/ng-directive-outputs"
+                ],
+                "priority": "high",
+                "template": [
+                  "#item:event"
+                ]
+              },
+              {
+                "items": "/js/ng-custom-events",
+                "priority": "normal",
+                "template": [
+                  "#item:event"
+                ]
+              }
+            ]
+          }
+        }
       ]
     },
     "js": {
@@ -720,6 +729,14 @@
           "name": "Animation callback",
           "pattern": "@.+",
           "doc-hide-pattern": true
+        }
+      ],
+      "ng-template-binding-keywords": [
+        {
+          "name": "as"
+        },
+        {
+          "name": "let"
         }
       ]
     },

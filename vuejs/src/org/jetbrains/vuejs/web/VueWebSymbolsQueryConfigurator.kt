@@ -33,7 +33,6 @@ import org.jetbrains.vuejs.lang.html.isVueFile
 import org.jetbrains.vuejs.model.*
 import org.jetbrains.vuejs.model.source.*
 import org.jetbrains.vuejs.web.scopes.*
-import java.util.function.Supplier
 
 val VUE_TOP_LEVEL_ELEMENTS = WebSymbolQualifiedKind(NAMESPACE_HTML, "vue-file-top-elements")
 val VUE_COMPONENTS = WebSymbolQualifiedKind(NAMESPACE_HTML, "vue-components")
@@ -212,6 +211,9 @@ class VueWebSymbolsQueryConfigurator : WebSymbolsQueryConfigurator {
                     it
                 )
               })
+
+    override val renames: Map<WebSymbolQualifiedKind, WebSymbolNameConverter>
+      get() = canonicalNames
 
     override val matchNames: Map<WebSymbolQualifiedKind, WebSymbolNameConverter>
       get() = canonicalNames

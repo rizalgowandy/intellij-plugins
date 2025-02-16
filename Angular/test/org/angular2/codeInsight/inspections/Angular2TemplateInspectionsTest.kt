@@ -5,11 +5,11 @@ import com.intellij.codeInspection.LocalInspectionTool
 import com.intellij.codeInspection.htmlInspections.HtmlUnknownAttributeInspection
 import com.intellij.codeInspection.htmlInspections.HtmlUnknownBooleanAttributeInspection
 import com.intellij.codeInspection.htmlInspections.HtmlUnknownTagInspection
-import com.intellij.javascript.web.WebFrameworkTestConfigurator
+import com.intellij.javascript.testFramework.web.WebFrameworkTestConfigurator
 import com.intellij.lang.javascript.JavaScriptBundle
 import com.intellij.lang.typescript.inspection.TypeScriptExplicitMemberTypeInspection
 import com.intellij.lang.typescript.inspections.TypeScriptUnresolvedReferenceInspection
-import com.intellij.webSymbols.moveToOffsetBySignature
+import com.intellij.webSymbols.testFramework.moveToOffsetBySignature
 import org.angular2.Angular2TestCase
 import org.angular2.Angular2TestModule
 import org.angular2.Angular2TestModule.*
@@ -22,7 +22,7 @@ import org.angular2.inspections.*
  *
  * @see Angular2DecoratorInspectionsTest
  */
-class Angular2TemplateInspectionsTest : Angular2TestCase("inspections/template", false) {
+class Angular2TemplateInspectionsTest : Angular2TestCase("inspections/template", true) {
 
   fun testEmptyEventBinding1() {
     doTest(1, "onc<caret>lick", "Add attribute value", AngularMissingEventHandlerInspection::class.java,
@@ -197,18 +197,22 @@ class Angular2TemplateInspectionsTest : Angular2TestCase("inspections/template",
   }
 
   fun testInaccessibleSymbolHtmlAot() {
-    doTest(AngularInaccessibleSymbolInspection::class.java,
-           "private-html.html", "private-html.ts")
+    doTest(inspections = listOf(AngularInaccessibleSymbolInspection::class.java),
+           dependencies = listOf(ANGULAR_CORE_13_3_5),
+           configurators = listOf(Angular2TsConfigFile(strict = false)),
+           files = listOf("private-html.html", "private-html.ts"))
   }
 
   fun testInaccessibleSymbolInlineAot() {
-    doTest(AngularInaccessibleSymbolInspection::class.java,
-           "private-inline.ts")
+    doTest(inspections = listOf(AngularInaccessibleSymbolInspection::class.java),
+           dependencies = listOf(ANGULAR_CORE_13_3_5, TS_LIB),
+           configurators = listOf(Angular2TsConfigFile(strict = false,)),
+           files = listOf("private-inline.ts"))
   }
 
   fun testInaccessibleSymbolStrict() {
     doTest(inspections = listOf(AngularInaccessibleSymbolInspection::class.java),
-           dependencies = listOf(ANGULAR_CORE_17_3_0),
+           dependencies = listOf(ANGULAR_CORE_17_3_0, TS_LIB),
            configurators = listOf(Angular2TsConfigFile()),
            files = listOf("inaccessibleSymbolStrict.ts"))
   }

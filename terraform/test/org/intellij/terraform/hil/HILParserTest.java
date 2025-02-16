@@ -4,7 +4,7 @@ package org.intellij.terraform.hil;
 import com.intellij.lang.Language;
 import com.intellij.psi.FileViewProvider;
 import com.intellij.testFramework.ParsingTestCase;
-import org.intellij.terraform.TerraformTestUtils;
+import org.intellij.terraform.TfTestUtils;
 import org.jetbrains.annotations.NotNull;
 
 import java.io.IOException;
@@ -17,11 +17,7 @@ public class HILParserTest extends ParsingTestCase {
 
   @Override
   protected String getTestDataPath() {
-    return TerraformTestUtils.getTestDataPath();
-  }
-
-  private void doTest() {
-    doTest(true);
+    return TfTestUtils.getTestDataPath();
   }
 
   public void testSimple() throws Exception {
@@ -244,6 +240,31 @@ public class HILParserTest extends ParsingTestCase {
     doCodeTest("%{~ if test() > -1 ~} 123 %{endif}");
   }
 
+  public void testSimpleDefinedMethodExpression() throws Exception {
+    doCodeTest("provider::aws::createInstance()");
+  }
+
+  public void testDefinedMethodExpressionWithParameters() throws Exception {
+    doCodeTest("provider::google::startServer(\"us-central1\", 2)");
+  }
+
+  public void testComplexDefinedMethodExpression() throws Exception {
+    doCodeTest("provider::custom::nestedMethodCall(param1, param2).innerCall()");
+  }
+
+  public void testDefinedMethodExpressionWithQualifier() throws Exception {
+    doCodeTest("provider::aws::resource(\"web_server\").deploy()");
+  }
+
+  public void testInvalidDefinedMethodExpression_MissingParts() throws Exception {
+    doCodeTest("provider::aws::");
+  }
+
+  public void testInvalidDefinedMethodExpression_InvalidSyntax() throws Exception {
+    doCodeTest("provider::identifier createInstance()");
+  }
+
+
   @Override
   protected void doCodeTest(@NotNull String code) throws IOException {
     if (!code.startsWith("${") && !code.endsWith("}")) {
@@ -252,7 +273,7 @@ public class HILParserTest extends ParsingTestCase {
     super.doCodeTest(code);
   }
 
-  protected void doCodeTest(@NotNull final String code, @NotNull final String expected) throws IOException {
+  protected void doCodeTest(@NotNull final String code, @NotNull final String expected) {
     myFile = createPsiFile("a", code);
     ensureParsed(myFile);
     assertEquals(code, myFile.getText());

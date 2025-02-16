@@ -1,6 +1,5 @@
 ### auto-generated section `build intellij.astro` start
-load("@rules_jvm//:jvm.bzl", "jvm_resources")
-load("@rules_jvm//:rules.bzl", "jvm_library")
+load("@rules_jvm//:jvm.bzl", "jvm_library", "jvm_resources")
 
 jvm_resources(
   name = "astro_resources",
@@ -12,20 +11,25 @@ jvm_library(
   name = "astro",
   module_name = "intellij.astro",
   visibility = ["//visibility:public"],
-  srcs = glob(["src/**/*.kt", "src/**/*.java", "gen/**/*.kt", "gen/**/*.java"], allow_empty = True, exclude = ["**/module-info.java"]),
-  javac_opts = "@rules_jvm//:j17",
-  kotlinc_opts = "@rules_jvm//:k17",
+  srcs = glob(["src/**/*.kt", "src/**/*.java", "gen/**/*.kt", "gen/**/*.java"], allow_empty = True),
   deps = [
+    "@community//platform/platform-impl:ide-impl",
+    "//CSS/frontback/css-api:css-frontback",
     "@community//platform/platform-api:ide",
+    "//plugins/JavaScriptLanguage/javascript-parser",
+    "@community//xml/xml-parser:parser",
     "@lib//:kotlin-stdlib",
     "@community//xml/xml-psi-api:psi",
     "@community//platform/lang-api:lang",
+    "@community//platform/ide-core-impl",
+    "@community//platform/indexing-impl",
     "@community//platform/lang-impl",
     "@community//xml/xml-psi-impl:psi-impl",
     "@community//platform/core-impl",
     "@community//platform/core-api:core",
     "@community//platform/analysis-impl",
     "@community//platform/core-ui",
+    "//plugins/JavaScriptLanguage/javascript-frontback-impl",
     "@community//platform/webSymbols",
     "//plugins/JavaScriptLanguage/web-platform:javascript-web",
     "@community//xml/impl",
@@ -34,10 +38,10 @@ jvm_library(
     "@lib//:fastutil-min",
     "//plugins/JavaScriptLanguage:javascript-impl",
     "@community//platform/code-style-impl:codeStyle-impl",
-    "//CSS/css-api:css",
+    "//CSS:css",
     "//contrib/postcss",
     "//platform/lsp",
-    "@ultimate_lib//:eclipse_lsp4j",
+    "@ultimate_lib//:eclipse-lsp4j",
     "//CSS/css-psi-impl:css-psi",
     "//platform/lsp-impl",
   ],

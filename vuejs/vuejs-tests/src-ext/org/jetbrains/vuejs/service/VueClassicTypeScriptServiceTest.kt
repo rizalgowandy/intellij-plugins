@@ -3,8 +3,8 @@ package org.jetbrains.vuejs.service
 
 import com.intellij.codeInsight.completion.CompletionType
 import com.intellij.lang.javascript.JSDaemonAnalyzerLightTestCase.checkHighlightByFile
-import com.intellij.lang.javascript.service.JSLanguageServiceProvider
 import com.intellij.lang.typescript.compiler.TypeScriptCompilerSettings
+import com.intellij.lang.typescript.compiler.TypeScriptServiceHolder
 import com.intellij.lang.typescript.service.TypeScriptServiceTestBase
 import com.intellij.openapi.actionSystem.CommonDataKeys.PROJECT
 import com.intellij.openapi.actionSystem.CommonDataKeys.PSI_ELEMENT
@@ -16,7 +16,7 @@ import com.intellij.refactoring.rename.PsiElementRenameHandler.DEFAULT_NAME
 import com.intellij.testFramework.TestActionEvent
 import com.intellij.testFramework.fixtures.CodeInsightTestFixture
 import com.intellij.util.ui.UIUtil
-import com.intellij.webSymbols.moveToOffsetBySignature
+import com.intellij.webSymbols.testFramework.moveToOffsetBySignature
 import junit.framework.TestCase
 import org.jetbrains.vuejs.lang.VueInspectionsProvider
 import org.jetbrains.vuejs.lang.VueTestModule
@@ -24,7 +24,6 @@ import org.jetbrains.vuejs.lang.configureVueDependencies
 import org.jetbrains.vuejs.lang.typescript.service.classic.VueClassicTypeScriptService
 import org.jetbrains.vuejs.lang.vueRelativeTestDataPath
 import org.junit.Test
-import kotlin.Throws
 
 private fun CodeInsightTestFixture.configureFileAndCheckHighlighting(filePath: String) {
   val myFixture = this
@@ -36,9 +35,9 @@ private const val SERVICE_TEST_PATH = "/ts_ls_highlighting"
 
 
 class VueClassicTypeScriptServiceTest : TypeScriptServiceTestBase() {
-  override fun getService(): VueClassicTypeScriptService =
-    JSLanguageServiceProvider.getLanguageServices(project)
-      .firstNotNullOf { it as? VueClassicTypeScriptService }
+  override val service: VueClassicTypeScriptService get() {
+    return TypeScriptServiceHolder.getForFile(project, file.virtualFile) as VueClassicTypeScriptService
+  }
 
   override fun getExtension(): String {
     return "vue"

@@ -13,6 +13,8 @@ import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.psi.xml.XmlTag
 import com.intellij.webSymbols.WebSymbolQualifiedName
 import com.intellij.webSymbols.query.WebSymbolNamesProvider
+import com.intellij.webSymbols.query.WebSymbolNamesProvider.Target.NAMES_QUERY
+import com.intellij.webSymbols.query.WebSymbolNamesProvider.Target.RENAME_QUERY
 import icons.AngularIcons
 import org.angular2.codeInsight.attributes.Angular2AttributeDescriptor
 import org.angular2.codeInsight.tags.Angular2ElementDescriptor
@@ -63,14 +65,14 @@ class Angular2Framework : WebFramework() {
   ): WebSymbolElementDescriptor =
     Angular2ElementDescriptor(info, tag)
 
-  override fun getAttributeNameCodeCompletionFilter(tag: XmlTag) =
+  override fun getAttributeNameCodeCompletionFilter(tag: XmlTag): Angular2AttributeNameCodeCompletionFilter =
     Angular2AttributeNameCodeCompletionFilter(tag)
 
   override fun getNames(
     qualifiedName: WebSymbolQualifiedName,
     target: WebSymbolNamesProvider.Target,
   ): List<String> {
-    if (target == WebSymbolNamesProvider.Target.NAMES_QUERY
+    if ((target == NAMES_QUERY || target == RENAME_QUERY)
         && qualifiedName.qualifiedKind == NG_DIRECTIVE_IN_OUTS) {
       // Required to find usages and rename for model signal
       return listOf(
@@ -83,7 +85,7 @@ class Angular2Framework : WebFramework() {
 
   companion object {
 
-    const val ID = "angular"
+    const val ID: String = "angular"
 
   }
 }

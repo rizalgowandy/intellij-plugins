@@ -3,16 +3,14 @@ package org.angular2.web.references
 
 import com.intellij.javascript.webSymbols.symbols.asWebSymbol
 import com.intellij.javascript.webSymbols.symbols.getMatchingJSPropertySymbols
+import com.intellij.lang.javascript.evaluation.JSTypeEvaluationLocationProvider
 import com.intellij.lang.javascript.psi.JSLiteralExpression
 import com.intellij.lang.javascript.psi.ecmal4.JSAttributeListOwner
 import com.intellij.lang.javascript.psi.util.stubSafeStringValue
-import com.intellij.model.Symbol
-import com.intellij.model.search.SearchRequest
-import com.intellij.openapi.project.Project
 import com.intellij.openapi.util.text.StringUtil
 import com.intellij.util.asSafely
 import com.intellij.webSymbols.WebSymbol
-import com.intellij.webSymbols.references.WebSymbolReferenceProvider
+import com.intellij.webSymbols.references.PsiWebSymbolReferenceProvider
 import org.angular2.Angular2DecoratorUtil.INPUTS_PROP
 import org.angular2.Angular2DecoratorUtil.OUTPUTS_PROP
 import org.angular2.entities.Angular2ClassBasedDirective
@@ -20,9 +18,9 @@ import org.angular2.entities.Angular2EntityUtils.getPropertyDeclarationOrReferen
 import org.angular2.web.NG_DIRECTIVE_INPUTS
 import org.angular2.web.NG_DIRECTIVE_OUTPUTS
 
-class Angular2DirectivePropertyLiteralReferencesProvider : WebSymbolReferenceProvider<JSLiteralExpression>() {
+class Angular2DirectivePropertyLiteralReferencesProvider : PsiWebSymbolReferenceProvider<JSLiteralExpression> {
 
-  override fun getOffsetsToSymbols(psiElement: JSLiteralExpression): Map<Int, WebSymbol> {
+  override fun getOffsetsToReferencedSymbols(psiElement: JSLiteralExpression): Map<Int, WebSymbol> {
     val stringValue = psiElement.stubSafeStringValue ?: return emptyMap()
     val colonIndex = stringValue.indexOf(':').takeIf { it >= 0 } ?: stringValue.length
     val startOffset = StringUtil.skipWhitespaceForward(stringValue, 0)
@@ -37,25 +35,24 @@ class Angular2DirectivePropertyLiteralReferencesProvider : WebSymbolReferencePro
 
     val name = stringValue.substring(startOffset, endOffset)
 
-    if (hostDirective) {
-      val properties = (if (kind == INPUTS_PROP) directive.inputs else directive.outputs)
-      val symbol = properties.find { it.name == name }
-                   ?: unresolvedSymbol(if (kind == INPUTS_PROP) NG_DIRECTIVE_INPUTS else NG_DIRECTIVE_OUTPUTS, name)
-      return mapOf(startOffset + 1 to symbol)
-    }
-    else {
-      val symbol = directive
-                     .asSafely<Angular2ClassBasedDirective>()
-                     ?.typeScriptClass
-                     ?.asWebSymbol()
-                     ?.getMatchingJSPropertySymbols(name, null)
-                     ?.find { it.source is JSAttributeListOwner }
-                   ?: return emptyMap()
-      return mapOf(startOffset + 1 to symbol)
+    return JSTypeEvaluationLocationProvider.withTypeEvaluationLocation(psiElement) {
+      if (hostDirective) {
+        val properties = (if (kind == INPUTS_PROP) directive.inputs else directive.outputs)
+        val symbol = properties.find { it.name == name }
+                     ?: PsiWebSymbolReferenceProvider.unresolvedSymbol(if (kind == INPUTS_PROP) NG_DIRECTIVE_INPUTS else NG_DIRECTIVE_OUTPUTS, name)
+        mapOf(startOffset + 1 to symbol)
+      }
+      else {
+        val symbol = directive
+                       .asSafely<Angular2ClassBasedDirective>()
+                       ?.typeScriptClass
+                       ?.asWebSymbol()
+                       ?.getMatchingJSPropertySymbols(name, null)
+                       ?.find { it.source is JSAttributeListOwner }
+                     ?: return@withTypeEvaluationLocation emptyMap()
+        mapOf(startOffset + 1 to symbol)
+      }
     }
   }
-
-  override fun getSearchRequests(project: Project, target: Symbol): Collection<SearchRequest> =
-    emptyList()
 
 }

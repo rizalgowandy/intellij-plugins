@@ -3,6 +3,7 @@
 
 package org.jetbrains.vuejs.options
 
+import com.intellij.icons.AllIcons
 import com.intellij.lang.javascript.JavaScriptBundle
 import com.intellij.lang.typescript.lsp.bind
 import com.intellij.openapi.options.Configurable
@@ -45,16 +46,18 @@ class VueConfigurable(private val project: Project) : UiDslUnnamedConfigurable.S
       separator()
 
       row {
-        checkBox(JavaScriptBundle.message("typescript.compiler.configurable.options.use.types.from.server"))
+        checkBox(JavaScriptBundle.message("typescript.compiler.configurable.options.use.servicePoweredTypeEngine"))
           .applyToComponent {
-            toolTipText = JavaScriptBundle.message("typescript.compiler.configurable.options.use.types.from.server.description")
+            toolTipText = JavaScriptBundle.message("typescript.compiler.configurable.options.use.servicePoweredTypeEngine.comment")
           }
           .bindSelected(settings::useTypesFromServer)
+          .gap(RightGap.SMALL)
+        icon(AllIcons.General.Alpha)
       }.enabledIf(radioButtonDisabled.selected.not())
     }
   }
 
   override fun getHelpTopic(): String = "settings.vue"
 
-  override fun getDisplayName() = VueBundle.message("vue.configurable.title")
+  override fun getDisplayName(): String = VueBundle.message("vue.configurable.title")
 }
